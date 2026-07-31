@@ -316,7 +316,7 @@ fn load_user_sensitive_patterns() -> Option<UserSensitivePatterns> {
             let home = crate::common::utils::home_dir();
             let config_path = home.join(".movix").join("sensitive_patterns.toml");
             let content = std::fs::read_to_string(&config_path).ok()?;
-            let doc = content.parse::<toml::Value>().ok()?;
+            let doc: toml::Table = content.parse().ok()?;
 
             let exact: Vec<String> = doc
                 .get("exact")

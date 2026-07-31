@@ -1,0 +1,103 @@
+name: Release
+
+# 当推送形如 v0.1.0 的 tag 时自动触发。
+# 跨平台编译 → 打包 → 上传到 GitHub Release 资产。
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+            archive: zip
+            binary: movix.exe
+            asset: movix-x86_64-pc-windows-msvc.zip
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+            archive: tar.gz
+            binary: movix
+            asset: movix-x86_64-unknown-linux-gnu.tar.gz
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+            archive: tar.gz
+            binary: movix
+            asset: movix-x86_64-unknown-linux-musl.tar.gz
+          - target: x86_64-apple-darwin
+            os: macos-latest
+            archive: tar.gz
+            binary: movix
+            asset: movix-x86_64-apple-darwin.tar.gz
+          - target: aarch64-apple-darwin
+            os: macos-latest
+            archive: tar.gz
+            binary: movix
+            asset: movix-aarch64-apple-darwin.tar.gz
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-latest
+            archive: tar.gz
+            binary: movix
+            asset: movix-aarch64-unknown-linux-gnu.tar.gz
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo registry & build
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+          shared-key: ${{ matrix.target }}
+
+      - name: Install musl tools (Linux musl static build)
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Install aarch64 cross tools (Linux ARM64 gnu build)
+        if: matrix.target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update && sudo apt-get install -y gcc-aarch64-linux-gnu
+          echo "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc" >> $GITHUB_ENV
+
+      - name: Build release
+        run: cargo build --release --target ${{ matrix.target }} --locked
+
+      - name: Generate SHA-256 checksums
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp "target/${{ matrix.target }}/release/${{ matrix.binary }}" dist/
+          if [ "${{ matrix.archive }}" = "tar.gz" ]; then
+            # Linux/macOS: tar.gz
+            tar -C dist -czf "${{ matrix.asset }}" "${{ matrix.binary }}"
+            rm -f dist/"${{ matrix.binary }}"
+          else
+            # Windows: 用 PowerShell 的 Compress-Archive 打包(避免 Git Bash 缺少 zip 命令)
+            powershell -NoProfile -Command "Compress-Archive -Path 'dist/${{ matrix.binary }}' -DestinationPath '${{ matrix.asset }}' -Force"
+            rm -f dist/"${{ matrix.binary }}"
+          fi
+          sha256sum "${{ matrix.asset }}" | tee "${{ matrix.asset }}.sha256"
+
+      - name: Upload to Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ matrix.asset }}
+            ${{ matrix.asset }}.sha256
+          fail_on_unmatched_files: true
+          generate_release_notes: true

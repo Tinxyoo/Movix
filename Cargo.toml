@@ -1,0 +1,57 @@
+[package]
+name = "movix"
+version = "0.1.0"
+edition = "2024"
+# let-chains (`if .. && let ..`) 在 1.87 才稳定;代码大量使用,故 MSRV 必须为 1.87。
+# 此前声明 1.85 会让按 README 装机(1.85/1.86)的用户构建失败。CI 跑 stable 探测不到。
+rust-version = "1.87"
+description = "Movix - Rust command-line coding agent for DeepSeek-compatible APIs"
+authors = ["Movix Team"]
+license = "MIT"
+repository = "https://github.com/Tinxyoo/Movix"
+keywords = ["ai", "agent", "coding", "deepseek", "cli"]
+categories = ["command-line-utilities", "development-tools"]
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+reqwest = { version = "0.12", features = ["json", "rustls-tls", "stream", "blocking"], default-features = false }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+clap = { version = "4", features = ["derive"] }
+dotenvy = "0.15"
+anyhow = "1"
+thiserror = "2"
+colored = "3"
+regex = "1"
+chrono = { version = "0.4", features = ["serde"] }
+crossterm = "0.28"
+ratatui = "0.29"
+indicatif = "0.17"
+tokio-stream = { version = "0.1", features = ["sync"] }
+futures = "0.3"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+async-trait = "0.1"
+glob = "0.3"
+url = "2"
+unicode-width = "0.2"
+arboard = "3"
+dirs = "6"
+libc = "0.2"
+tiktoken-rs = { version = "0.6", optional = true }
+toml = "0.8"
+
+[features]
+default = []
+# 启用精确 token 计数(基于 BPE),替代启发式估算。
+# 需要编译原生代码,在某些平台可能不可用。
+accurate-tokens = ["tiktoken-rs"]
+
+[dev-dependencies]
+tempfile = "3"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true

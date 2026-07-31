@@ -1,0 +1,32 @@
+version: 2
+# 依赖自动更新配置:每周检查 cargo 依赖与 GitHub Actions 版本,
+# 自动开 PR,降低依赖过时 / 已知漏洞风险。
+
+updates:
+  # Rust 依赖(Cargo.toml / Cargo.lock)
+  - package-ecosystem: "cargo"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "rust"
+    commit-message:
+      prefix: "deps(cargo)"
+      include: "scope"
+
+  # GitHub Actions 版本(checkout / rust-toolchain / rust-cache / action-gh-release 等)
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"
+    commit-message:
+      prefix: "deps(ci)"
+      include: "scope"

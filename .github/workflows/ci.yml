@@ -1,0 +1,73 @@
+name: CI
+
+# 每次 push / PR 触发：编译 + 单元/集成测试 + clippy + fmt 检查。
+# README 顶部的 CI 徽章指的就是这个 workflow。
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache cargo
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      - name: Build
+        run: cargo build --locked --all-targets
+
+      - name: Run unit & integration tests
+        run: cargo test --locked --all-targets -- --nocapture
+
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: fmt check
+        run: cargo fmt --all -- --check
+      - name: clippy
+        run: cargo clippy --locked --all-targets -- -D warnings
+
+  # 修复(m4):原 CI 只有 build/test/fmt/clippy,无依赖漏洞扫描。cargo audit
+  # 扫描 Cargo.lock 中已知的 RustSec 安全公告,在依赖出现 CVE 时及时拦截。
+  audit:
+    name: cargo audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+      - name: cargo audit
+        # 只阻断 vulnerability(退出码非零);unmaintained/unsound warning 仅记录:
+        # number_prefix/paste/lru 等是间接依赖,上游未发修复版,不应阻断 CI。
+        # 修复(初次接入):原 `--deny warnings` 把 warning 也当失败,导致 3 个间接
+        # 依赖的 unmaintained/unsound 让 CI 永红。改为默认策略:vulnerability 阻断,
+        # warning 仅告警。定期人工复查 warning 列表。
+        run: cargo audit

@@ -146,9 +146,9 @@ pub fn previous_char_boundary(s: &str, mut index: usize) -> usize {
 /// 文件内容,同机其他用户可读;`.env` 先 0644 再 chmod 也存在竞态窗口。
 /// 这里创建时直接设 0600,无中间状态。
 pub fn write_private(path: &std::path::Path, contents: &str) -> std::io::Result<()> {
-    use std::io::Write;
     #[cfg(unix)]
     {
+        use std::io::Write;
         use std::os::unix::fs::OpenOptionsExt;
         let mut opts = std::fs::OpenOptions::new();
         opts.write(true).create(true).truncate(true).mode(0o600);

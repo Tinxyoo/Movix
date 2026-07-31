@@ -39,7 +39,7 @@ arboard = "3"
 dirs = "6"
 libc = "0.2"
 tiktoken-rs = { version = "0.6", optional = true }
-toml = "0.8"
+toml = "1.1"
 
 [features]
 default = []

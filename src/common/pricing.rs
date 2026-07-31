@@ -96,10 +96,7 @@ output_per_million_cny = {fo:?}
 /// 从 `~/.movix/pricing.toml` 加载模型定价
 fn load_pricing_from_config(model: &str) -> Option<CurrencyPricing> {
     let path = crate::common::utils::home_dir().join(".movix/pricing.toml");
-    let doc = std::fs::read_to_string(&path)
-        .ok()?
-        .parse::<toml::Value>()
-        .ok()?;
+    let doc: toml::Table = std::fs::read_to_string(&path).ok()?.parse().ok()?;
     let s = doc.get("models")?.get(model)?;
     let hit = s.get("input_cache_hit_per_million_cny")?.as_float()?;
     let miss = s.get("input_cache_miss_per_million_cny")?.as_float()?;
@@ -319,7 +316,7 @@ mod tests {
     #[test]
     fn test_toml_round_trip() {
         let toml = DEFAULT_PRICING.to_toml();
-        let v: toml::Value = toml.parse().unwrap();
+        let v: toml::Table = toml.parse().unwrap();
         assert_eq!(
             v["models"]["deepseek-v4-pro"]["input_cache_miss_per_million_cny"]
                 .as_float()
